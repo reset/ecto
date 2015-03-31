@@ -16,10 +16,20 @@ defmodule Ecto.Migration.Runner do
   """
   def run(repo, module, direction, operation, migrator_direction, opts) do
     level = Keyword.get(opts, :log, :info)
+    schema = Keyword.get(opts, :schema)
     start_link(repo, direction, migrator_direction, level)
 
-    log(level, "== Running #{inspect module}.#{operation}/0 #{direction}")
-    {time, _} = :timer.tc(module, operation, [])
+    # either set schema here (potentially dangerous if we have a pool of runners working) or
+    # have the migration writer specify schema themselves.
+    #
+    # i.e.
+    #   def up(schema) do
+    #     create table(:posts), schema: schema
+    #   end
+    #
+
+    log(level, "== Running #{inspect module}.#{operation}/0 #{direction} #{schema}")
+    {time, _} = :timer.tc(module, operation, [schema])
     log(level, "== Migrated in #{inspect(div(time, 10000) / 10)}s")
 
     stop()

@@ -109,9 +109,12 @@ defmodule Ecto.Migrator do
 
   defp attempt(repo, module, direction, operation, reference, opts) do
     if Code.ensure_loaded?(module) and
-       function_exported?(module, operation, 0) do
-      Runner.run(repo, module, direction, operation, reference, opts)
-      :ok
+      (function_exported?(module, operation, 0) || function_exported?(module, operation, 1)) do
+        {schemas, opts} = Keyword.pop(opts, :schemas)
+        for schema <- schemas do
+          Runner.run(repo, module, direction, operation, reference, Keyword.put(opts, :schema, schema))
+        end
+        :ok
     end
   end
 
@@ -127,11 +130,13 @@ defmodule Ecto.Migrator do
     * `:to` - runs all until the supplied version is reached
     * `:log` - the level to use for logging.
       Can be any of `Logger.level/0` values or `false`.
+    * `:schemas` - run migrations against all schemas. default: `["public"]`
 
   """
   @spec run(Ecto.Repo.t, binary, atom, Keyword.t) :: [integer]
   def run(repo, directory, direction, opts) do
     versions = migrated_versions(repo)
+    opts     = Keyword.put_new(opts, :schemas, ["public"])
 
     cond do
       opts[:all] ->
